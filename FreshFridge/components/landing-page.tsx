@@ -96,13 +96,19 @@ export default function LandingPage({ onEnterApp }: { onEnterApp: () => void }) 
 
               <div className="mb-12">
                 <button
-                  onClick={onEnterApp}
+                  onClick={() => {
+                    console.log('Hero button clicked!')
+                    onEnterApp()
+                  }}
                   className="inline-flex items-center gap-2 px-8 py-4 bg-black text-white rounded-xl font-medium text-[17px] hover:bg-gray-800 transition-all hover:-translate-y-1 hover:shadow-xl h-14"
                 >
                   Start free today
                   <span className="text-xl">→</span>
                 </button>
                 <p className="mt-3 text-sm text-gray-500">No credit card required • Free forever</p>
+                <p className="mt-2 text-xs text-gray-400">
+                  Debug: <a href="?skip=true" className="underline">Skip to app</a>
+                </p>
               </div>
 
               <div className="flex items-center gap-4">

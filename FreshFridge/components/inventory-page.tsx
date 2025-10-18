@@ -1,22 +1,43 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Package, Calendar, Clock, Search } from "lucide-react"
+import { dataService } from "@/lib/data-service"
+import { FoodItem } from "@/lib/supabase"
 
-export default function InventoryPage() {
+interface InventoryPageProps {
+  onScanFridge?: () => void
+}
+
+export default function InventoryPage({ onScanFridge }: InventoryPageProps) {
   const [selectedCategory, setSelectedCategory] = useState("All")
   const [searchTerm, setSearchTerm] = useState("")
+  const [items, setItems] = useState<FoodItem[]>([])
+  const [loading, setLoading] = useState(true)
 
-  const categories = ["All", "Dairy", "Produce", "Protein", "Drinks"]
+  const categories = ["All", "Dairy", "Produce", "Protein", "Drinks", "Grains", "Condiments"]
 
-  const items = [
-    { name: "Milk", date: "Oct 17, 2025", daysLeft: 2, category: "Dairy", emoji: "🥛" },
-    { name: "Eggs", date: "Oct 17, 2025", daysLeft: 3, category: "Dairy", emoji: "🥚" },
-    { name: "Spinach", date: "Oct 17, 2025", daysLeft: 3, category: "Produce", emoji: "🥬" },
-    { name: "Chicken", date: "Oct 16, 2025", daysLeft: 11, category: "Protein", emoji: "🍗" },
-    { name: "Apple Juice", date: "Oct 16, 2025", daysLeft: 7, category: "Drinks", emoji: "🧃" },
-    { name: "Bananas", date: "Oct 15, 2025", daysLeft: 1, category: "Produce", emoji: "🍌" },
-  ]
+  useEffect(() => {
+    const loadItems = async () => {
+      try {
+        const foodItems = await dataService.getFoodItems()
+        setItems(foodItems)
+      } catch (error) {
+        console.error('Error loading food items:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadItems()
+  }, [])
+
+  const getDaysLeft = (expiryDate: string) => {
+    const today = new Date()
+    const expiry = new Date(expiryDate)
+    const diffTime = expiry.getTime() - today.getTime()
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+  }
 
   const filteredItems = items.filter((item) => {
     const matchesCategory = selectedCategory === "All" || item.category === selectedCategory
@@ -93,7 +114,7 @@ export default function InventoryPage() {
               <div className="flex items-start justify-between mb-6">
                 <div className="w-20 h-20 bg-[#F5F5F5] rounded-2xl flex items-center justify-center text-4xl relative">
                   {item.emoji}
-                  {item.daysLeft <= 2 && (
+                  {getDaysLeft(item.expiry_date) <= 2 && (
                     <div className="absolute top-2 right-2 px-2 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wider bg-[#EF4444]/90 text-white backdrop-blur-sm">
                       Urgent
                     </div>
@@ -106,16 +127,16 @@ export default function InventoryPage() {
               <div className="space-y-3 mb-6">
                 <div className="flex items-center text-[15px] text-[#737373]">
                   <Calendar className="w-4 h-4 mr-3" />
-                  <span>{item.date}</span>
+                  <span>{new Date(item.expiry_date).toLocaleDateString()}</span>
                 </div>
-                <div className={`flex items-center text-[15px] font-medium ${getExpiryColor(item.daysLeft)}`}>
+                <div className={`flex items-center text-[15px] font-medium ${getExpiryColor(getDaysLeft(item.expiry_date))}`}>
                   <Clock className="w-4 h-4 mr-3" />
                   <span>
-                    {item.daysLeft === 0
+                    {getDaysLeft(item.expiry_date) === 0
                       ? "Expired"
-                      : item.daysLeft === 1
+                      : getDaysLeft(item.expiry_date) === 1
                         ? "1 day left"
-                        : `${item.daysLeft} days left`}
+                        : `${getDaysLeft(item.expiry_date)} days left`}
                   </span>
                 </div>
               </div>
@@ -144,8 +165,11 @@ export default function InventoryPage() {
               ? "Try adjusting your search terms"
               : `No items in the ${selectedCategory.toLowerCase()} category`}
           </p>
-          <button className="bg-black text-white rounded-xl py-4 px-10 font-medium text-[15px] shadow-subtle hover-lift-small transition-all duration-200">
-            Add New Item
+          <button 
+            onClick={onScanFridge}
+            className="bg-black text-white rounded-xl py-4 px-10 font-medium text-[15px] shadow-subtle hover-lift-small transition-all duration-200"
+          >
+            Scan Item
           </button>
         </div>
       )}

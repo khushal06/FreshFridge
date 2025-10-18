@@ -1,41 +1,56 @@
-import { Clock, Users, Star, Search, Heart } from "lucide-react"
+"use client"
+
+import { useState, useEffect } from "react"
+import { Clock, Users, Star, Search, Heart, Loader2, Sparkles } from "lucide-react"
+import { dataService } from "@/lib/data-service"
+import { Recipe } from "@/lib/supabase"
 
 export default function RecipePage() {
-  const recipes = [
-    {
-      id: 1,
-      title: "Spinach Omelette",
-      subtitle: "Perfect breakfast with fresh ingredients",
-      emoji: "🥚",
-      cookTime: "10 min",
-      servings: "2",
-      rating: 4.8,
-      reviews: 127,
-      calories: 320,
-    },
-    {
-      id: 2,
-      title: "Chicken Stir Fry",
-      subtitle: "Quick and healthy dinner option",
-      emoji: "🍗",
-      cookTime: "20 min",
-      servings: "4",
-      rating: 4.6,
-      reviews: 89,
-      calories: 450,
-    },
-    {
-      id: 3,
-      title: "Banana Smoothie",
-      subtitle: "Refreshing morning drink",
-      emoji: "🍌",
-      cookTime: "5 min",
-      servings: "1",
-      rating: 4.9,
-      reviews: 203,
-      calories: 180,
-    },
-  ]
+  const [recipes, setRecipes] = useState<Recipe[]>([])
+  const [loading, setLoading] = useState(true)
+  const [generatingSuggestions, setGeneratingSuggestions] = useState(false)
+  const [searchTerm, setSearchTerm] = useState("")
+
+  useEffect(() => {
+    const loadRecipes = async () => {
+      try {
+        const recipeData = await dataService.getRecipes()
+        setRecipes(recipeData)
+      } catch (error) {
+        console.error('Error loading recipes:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadRecipes()
+  }, [])
+
+  const generateSuggestions = async () => {
+    setGeneratingSuggestions(true)
+    try {
+      const foodItems = await dataService.getFoodItems()
+      const suggestions = await dataService.generateRecipeSuggestions(foodItems)
+      setRecipes(suggestions)
+    } catch (error) {
+      console.error('Error generating recipe suggestions:', error)
+    } finally {
+      setGeneratingSuggestions(false)
+    }
+  }
+
+  const filteredRecipes = recipes.filter(recipe =>
+    recipe.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    recipe.subtitle.toLowerCase().includes(searchTerm.toLowerCase())
+  )
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-12 px-8 lg:px-16">
@@ -44,43 +59,61 @@ export default function RecipePage() {
         <p className="text-[#737373] text-[17px] leading-relaxed">Delicious meals with your ingredients</p>
       </div>
 
-      <div className="relative max-w-2xl mx-auto">
-        <Search className="absolute left-6 top-1/2 transform -translate-y-1/2 w-5 h-5 text-[#737373]" />
-        <input
-          type="text"
-          placeholder="Search recipes..."
-          className="w-full pl-14 pr-6 py-5 bg-white border border-[rgba(0,0,0,0.06)] rounded-full focus:outline-none focus:ring-4 focus:ring-[rgba(14,165,233,0.1)] focus:border-[#0EA5E9] text-black placeholder:text-[#737373] text-[17px] shadow-subtle transition-all duration-200"
-        />
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="relative max-w-2xl flex-1">
+          <Search className="absolute left-6 top-1/2 transform -translate-y-1/2 w-5 h-5 text-[#737373]" />
+          <input
+            type="text"
+            placeholder="Search recipes..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-14 pr-6 py-5 bg-white border border-[rgba(0,0,0,0.06)] rounded-full focus:outline-none focus:ring-4 focus:ring-[rgba(14,165,233,0.1)] focus:border-[#0EA5E9] text-black placeholder:text-[#737373] text-[17px] shadow-subtle transition-all duration-200"
+          />
+        </div>
+        
+        <button
+          onClick={generateSuggestions}
+          disabled={generatingSuggestions}
+          className="flex items-center gap-3 px-6 py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 disabled:bg-blue-400 transition-colors"
+        >
+          {generatingSuggestions ? (
+            <Loader2 className="w-5 h-5 animate-spin" />
+          ) : (
+            <Sparkles className="w-5 h-5" />
+          )}
+          {generatingSuggestions ? 'Generating...' : 'AI Suggestions'}
+        </button>
       </div>
 
-      <div className="bg-white rounded-3xl shadow-dramatic overflow-hidden">
-        <div className="p-24 text-center">
-          <div className="text-9xl mb-12">🥚</div>
-          <h2 className="text-[57px] font-bold text-black mb-6 leading-[1.1] tracking-[-0.03em]">Spinach Omelette</h2>
-          <p className="text-[#737373] text-[17px] mb-12">Perfect breakfast with eggs & fresh spinach</p>
+      {filteredRecipes.length > 0 && (
+        <div className="bg-white rounded-3xl shadow-dramatic overflow-hidden">
+          <div className="p-24 text-center">
+            <div className="text-9xl mb-12">{filteredRecipes[0].emoji}</div>
+            <h2 className="text-[57px] font-bold text-black mb-6 leading-[1.1] tracking-[-0.03em]">{filteredRecipes[0].title}</h2>
+            <p className="text-[#737373] text-[17px] mb-12">{filteredRecipes[0].subtitle}</p>
 
-          <div className="flex items-center justify-center gap-16 mb-16 text-[17px]">
-            <div className="flex items-center text-black">
-              <Clock className="w-5 h-5 mr-3 text-[#737373]" />
-              <span className="font-medium">10 min</span>
+            <div className="flex items-center justify-center gap-16 mb-16 text-[17px]">
+              <div className="flex items-center text-black">
+                <Clock className="w-5 h-5 mr-3 text-[#737373]" />
+                <span className="font-medium">{filteredRecipes[0].cook_time}</span>
+              </div>
+              <div className="flex items-center text-black">
+                <Users className="w-5 h-5 mr-3 text-[#737373]" />
+                <span className="font-medium">{filteredRecipes[0].servings} servings</span>
+              </div>
+              <div className="flex items-center text-black">
+                <Star className="w-5 h-5 mr-3 text-[#FBBC04] fill-[#FBBC04]" />
+                <span className="font-medium font-mono">{filteredRecipes[0].rating}</span>
+                <span className="text-[#737373] ml-2">({filteredRecipes[0].reviews} reviews)</span>
+              </div>
+              <div className="text-black font-medium font-mono">{filteredRecipes[0].calories} cal</div>
             </div>
-            <div className="flex items-center text-black">
-              <Users className="w-5 h-5 mr-3 text-[#737373]" />
-              <span className="font-medium">2 servings</span>
-            </div>
-            <div className="flex items-center text-black">
-              <Star className="w-5 h-5 mr-3 text-[#FBBC04] fill-[#FBBC04]" />
-              <span className="font-medium font-mono">4.8</span>
-              <span className="text-[#737373] ml-2">(127 reviews)</span>
-            </div>
-            <div className="text-black font-medium font-mono">320 cal</div>
-          </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-16 max-w-6xl mx-auto">
             <div className="bg-[#FAFAFA] rounded-2xl p-10 text-left">
               <h3 className="text-[24px] font-semibold text-black mb-8 tracking-[-0.02em]">Ingredients</h3>
               <div className="space-y-4">
-                {["Eggs", "Spinach", "Cheese", "Butter"].map((ingredient, index) => (
+                {filteredRecipes[0].ingredients.map((ingredient, index) => (
                   <label
                     key={index}
                     className="flex items-center p-4 hover:bg-white rounded-xl transition-colors cursor-pointer group"
@@ -97,11 +130,7 @@ export default function RecipePage() {
             <div className="bg-[#FAFAFA] rounded-2xl p-10 text-left">
               <h3 className="text-[24px] font-semibold text-black mb-8 tracking-[-0.02em]">Instructions</h3>
               <div className="space-y-6">
-                {[
-                  "Beat eggs in a bowl with salt and pepper",
-                  "Heat butter in a non-stick pan",
-                  "Add spinach and cook until wilted",
-                ].map((step, index) => (
+                {filteredRecipes[0].instructions.map((step, index) => (
                   <div key={index} className="flex items-start gap-5">
                     <div className="w-10 h-10 bg-black text-white rounded-full flex items-center justify-center text-[15px] font-bold flex-shrink-0 font-mono">
                       {index + 1}
@@ -122,12 +151,14 @@ export default function RecipePage() {
             </button>
           </div>
         </div>
-      </div>
+        </div>
+      )}
 
-      <div>
-        <h2 className="text-[32px] font-semibold text-black mb-12 tracking-[-0.02em]">More Recipes</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {recipes.slice(1).map((recipe) => (
+      {filteredRecipes.length > 1 && (
+        <div>
+          <h2 className="text-[32px] font-semibold text-black mb-12 tracking-[-0.02em]">More Recipes</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {filteredRecipes.slice(1).map((recipe) => (
             <div
               key={recipe.id}
               className="bg-white rounded-2xl shadow-subtle hover-lift transition-all duration-300 overflow-hidden"
@@ -140,7 +171,7 @@ export default function RecipePage() {
                 <div className="flex items-center justify-center gap-6 text-[15px] text-[#737373] mb-6">
                   <div className="flex items-center">
                     <Clock className="w-4 h-4 mr-2" />
-                    <span>{recipe.cookTime}</span>
+                    <span>{recipe.cook_time}</span>
                   </div>
                   <div className="flex items-center">
                     <Users className="w-4 h-4 mr-2" />
@@ -164,9 +195,32 @@ export default function RecipePage() {
                 </div>
               </div>
             </div>
-          ))}
+            ))}
+          </div>
         </div>
-      </div>
+      )}
+
+      {filteredRecipes.length === 0 && (
+        <div className="text-center py-24">
+          <div className="text-6xl mb-8">🍽️</div>
+          <h3 className="text-2xl font-semibold text-gray-900 mb-4">No recipes found</h3>
+          <p className="text-gray-600 mb-8">
+            {searchTerm ? 'Try adjusting your search terms' : 'Generate AI-powered recipe suggestions based on your inventory'}
+          </p>
+          <button
+            onClick={generateSuggestions}
+            disabled={generatingSuggestions}
+            className="flex items-center gap-3 mx-auto px-6 py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 disabled:bg-blue-400 transition-colors"
+          >
+            {generatingSuggestions ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : (
+              <Sparkles className="w-5 h-5" />
+            )}
+            {generatingSuggestions ? 'Generating...' : 'Generate AI Suggestions'}
+          </button>
+        </div>
+      )}
     </div>
   )
 }

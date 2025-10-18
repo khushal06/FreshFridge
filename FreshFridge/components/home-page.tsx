@@ -1,22 +1,52 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Package, Clock, ChefHat, TrendingUp, Plus, AlertTriangle } from "lucide-react"
+import { dataService } from "@/lib/data-service"
+import { FoodItem } from "@/lib/supabase"
 
-export default function HomePage() {
-  const [recentItems] = useState([
-    { name: "Milk", daysLeft: 2, emoji: "🥛", urgent: true },
-    { name: "Bananas", daysLeft: 1, emoji: "🍌", urgent: true },
-    { name: "Spinach", daysLeft: 3, emoji: "🥬", urgent: false },
-    { name: "Eggs", daysLeft: 4, emoji: "🥚", urgent: false },
-  ])
+interface HomePageProps {
+  onScanFridge?: () => void
+}
 
-  const [quickStats] = useState({
-    totalItems: 26,
-    urgentItems: 3,
-    weeklySavings: 45,
-    recipesThisWeek: 8,
+export default function HomePage({ onScanFridge }: HomePageProps) {
+  const [recentItems, setRecentItems] = useState<FoodItem[]>([])
+  const [quickStats, setQuickStats] = useState({
+    totalItems: 0,
+    urgentItems: 0,
+    weeklySavings: 0,
+    recipesThisWeek: 0,
   })
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [items, stats] = await Promise.all([
+          dataService.getFoodItems(),
+          dataService.getStats()
+        ])
+        
+        setRecentItems(items.slice(0, 4)) // Show first 4 items
+        setQuickStats(stats)
+      } catch (error) {
+        console.error('Error loading data:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadData()
+  }, [])
+
+  const getDaysLeft = (expiryDate: string) => {
+    const today = new Date()
+    const expiry = new Date(expiryDate)
+    const diffTime = expiry.getTime() - today.getTime()
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+  }
+
+  const isUrgent = (daysLeft: number) => daysLeft <= 2
 
   return (
     <div className="space-y-12 px-8 lg:px-16">
@@ -27,9 +57,12 @@ export default function HomePage() {
             <p className="text-[#737373] text-[17px] leading-relaxed">Here&apos;s what&apos;s happening in your kitchen</p>
           </div>
           <div className="flex items-center gap-4">
-            <button className="flex items-center px-6 py-3 bg-white border border-[rgba(0,0,0,0.06)] rounded-xl hover:bg-[#FAFAFA] transition-all duration-200 text-[15px] font-medium shadow-subtle">
+            <button 
+              onClick={onScanFridge}
+              className="flex items-center px-6 py-3 bg-white border border-[rgba(0,0,0,0.06)] rounded-xl hover:bg-[#FAFAFA] transition-all duration-200 text-[15px] font-medium shadow-subtle"
+            >
               <Plus className="w-4 h-4 mr-3" />
-              Add Item
+              Scan Item
             </button>
             <button className="flex items-center px-6 py-3 bg-black text-white rounded-xl shadow-subtle hover-lift-small transition-all duration-200 text-[15px] font-medium">
               <ChefHat className="w-4 h-4 mr-3" />
@@ -94,12 +127,14 @@ export default function HomePage() {
               <AlertTriangle className="w-6 h-6 text-[#EF4444]" />
               <h2 className="text-[24px] font-semibold text-black tracking-[-0.02em]">Items Expiring Soon</h2>
             </div>
-            <span className="text-[13px] text-[#737373] font-medium">{recentItems.filter(item => item.urgent).length} items</span>
+            <span className="text-[13px] text-[#737373] font-medium">{recentItems.filter(item => isUrgent(getDaysLeft(item.expiry_date))).length} items</span>
           </div>
         </div>
         <div className="p-8">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {recentItems.filter(item => item.urgent).map((item, index) => (
+            {recentItems.filter(item => isUrgent(getDaysLeft(item.expiry_date))).map((item, index) => {
+              const daysLeft = getDaysLeft(item.expiry_date)
+              return (
               <div
                 key={index}
                 className="flex items-center gap-4 p-6 bg-[#FEF2F2] border border-[#FECACA] rounded-xl hover:bg-[#FEE2E2] transition-colors"
@@ -111,14 +146,15 @@ export default function HomePage() {
                   <h3 className="font-semibold text-black text-[17px] mb-1">{item.name}</h3>
                   <div className="flex items-center text-[#EF4444] text-[15px] font-medium">
                     <Clock className="w-4 h-4 mr-2" />
-                    {item.daysLeft === 1 ? "Expires tomorrow" : `Expires in ${item.daysLeft} days`}
+                    {daysLeft === 1 ? "Expires tomorrow" : `Expires in ${daysLeft} days`}
                   </div>
                 </div>
                 <button className="px-4 py-2 bg-[#EF4444] text-white rounded-lg text-[13px] font-medium hover:bg-[#DC2626] transition-colors">
                   Use Now
                 </button>
               </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       </div>
@@ -134,7 +170,9 @@ export default function HomePage() {
           </div>
           <div className="p-8">
             <div className="space-y-4">
-              {recentItems.map((item, index) => (
+              {recentItems.map((item, index) => {
+                const daysLeft = getDaysLeft(item.expiry_date)
+                return (
                 <div key={index} className="flex items-center gap-4 p-4 hover:bg-[#FAFAFA] rounded-xl transition-colors">
                   <div className="w-12 h-12 bg-[#F5F5F5] rounded-lg flex items-center justify-center text-2xl">
                     {item.emoji}
@@ -142,16 +180,17 @@ export default function HomePage() {
                   <div className="flex-1">
                     <h3 className="font-medium text-black text-[15px]">{item.name}</h3>
                     <p className="text-[#737373] text-[13px]">
-                      {item.daysLeft === 1 ? "Expires tomorrow" : `${item.daysLeft} days left`}
+                      {daysLeft === 1 ? "Expires tomorrow" : `${daysLeft} days left`}
                     </p>
                   </div>
-                  {item.urgent && (
+                  {isUrgent(daysLeft) && (
                     <div className="px-2 py-1 bg-[#EF4444] text-white rounded-full text-[11px] font-bold uppercase tracking-wider">
                       Urgent
                     </div>
                   )}
                 </div>
-              ))}
+                )
+              })}
             </div>
             <button className="w-full mt-6 py-3 border border-[rgba(0,0,0,0.06)] rounded-xl text-[15px] font-medium text-black hover:bg-[#FAFAFA] transition-colors">
               View All Items
