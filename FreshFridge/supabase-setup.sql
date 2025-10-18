@@ -49,12 +49,22 @@ CREATE TABLE IF NOT EXISTS chat_messages (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Create grocery_logs table
+CREATE TABLE IF NOT EXISTS grocery_logs (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  store_name TEXT NOT NULL,
+  amount DECIMAL(10,2) NOT NULL,
+  date DATE NOT NULL DEFAULT CURRENT_DATE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- Create indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_food_items_expiry_date ON food_items(expiry_date);
 CREATE INDEX IF NOT EXISTS idx_food_items_category ON food_items(category);
 CREATE INDEX IF NOT EXISTS idx_recipes_rating ON recipes(rating);
 CREATE INDEX IF NOT EXISTS idx_chat_messages_session_id ON chat_messages(session_id);
 CREATE INDEX IF NOT EXISTS idx_chat_messages_timestamp ON chat_messages(timestamp);
+CREATE INDEX IF NOT EXISTS idx_grocery_logs_date ON grocery_logs(date);
 
 -- Create updated_at trigger function
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -78,6 +88,7 @@ CREATE TRIGGER update_recipes_updated_at
 ALTER TABLE food_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE recipes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE chat_messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE grocery_logs ENABLE ROW LEVEL SECURITY;
 
 -- Create policies for anonymous access (for demo purposes)
 -- In production, you should implement proper authentication
@@ -88,6 +99,9 @@ CREATE POLICY "Allow all operations on recipes" ON recipes
     FOR ALL USING (true) WITH CHECK (true);
 
 CREATE POLICY "Allow all operations on chat_messages" ON chat_messages
+    FOR ALL USING (true) WITH CHECK (true);
+
+CREATE POLICY "Allow all operations on grocery_logs" ON grocery_logs
     FOR ALL USING (true) WITH CHECK (true);
 
 -- Insert some sample data

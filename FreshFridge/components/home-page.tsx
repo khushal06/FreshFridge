@@ -1,9 +1,10 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Package, Clock, ChefHat, TrendingUp, Plus, AlertTriangle } from "lucide-react"
+import { Package, Clock, ChefHat, TrendingUp, Plus, AlertTriangle, ShoppingCart } from "lucide-react"
 import { dataService } from "@/lib/data-service"
 import { FoodItem } from "@/lib/supabase"
+import LogGroceries from "./log-groceries"
 
 interface HomePageProps {
   onScanFridge?: () => void
@@ -18,6 +19,7 @@ export default function HomePage({ onScanFridge }: HomePageProps) {
     recipesThisWeek: 0,
   })
   const [loading, setLoading] = useState(true)
+  const [showLogGroceries, setShowLogGroceries] = useState(false)
 
   useEffect(() => {
     const loadData = async () => {
@@ -38,6 +40,21 @@ export default function HomePage({ onScanFridge }: HomePageProps) {
 
     loadData()
   }, [])
+
+  const handleGroceryLogged = async () => {
+    // Refresh stats after logging groceries
+    try {
+      console.log('🛒 Groceries logged, refreshing home page stats...')
+      const stats = await dataService.getStats()
+      setQuickStats(stats)
+      
+      // Dispatch custom event to notify other components
+      console.log('📡 Dispatching groceryLogged event...')
+      window.dispatchEvent(new CustomEvent('groceryLogged'))
+    } catch (error) {
+      console.error('Error refreshing stats:', error)
+    }
+  }
 
   const getDaysLeft = (expiryDate: string) => {
     const today = new Date()
@@ -63,6 +80,13 @@ export default function HomePage({ onScanFridge }: HomePageProps) {
             >
               <Plus className="w-4 h-4 mr-3" />
               Scan Item
+            </button>
+            <button 
+              onClick={() => setShowLogGroceries(true)}
+              className="flex items-center px-6 py-3 bg-white border border-[rgba(0,0,0,0.06)] rounded-xl hover:bg-[#FAFAFA] transition-all duration-200 text-[15px] font-medium shadow-subtle"
+            >
+              <ShoppingCart className="w-4 h-4 mr-3" />
+              Log Groceries
             </button>
             <button className="flex items-center px-6 py-3 bg-black text-white rounded-xl shadow-subtle hover-lift-small transition-all duration-200 text-[15px] font-medium">
               <ChefHat className="w-4 h-4 mr-3" />
@@ -234,6 +258,14 @@ export default function HomePage({ onScanFridge }: HomePageProps) {
           </div>
         </div>
       </div>
+
+      {/* Log Groceries Popup */}
+      {showLogGroceries && (
+        <LogGroceries
+          onClose={() => setShowLogGroceries(false)}
+          onGroceryLogged={handleGroceryLogged}
+        />
+      )}
     </div>
   )
 }

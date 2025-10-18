@@ -139,19 +139,165 @@ export default function CameraScanner({ onItemsRecognized, onClose }: CameraScan
   }, [startCamera])
 
   const updateEditableItem = useCallback((index: number, field: keyof FoodRecognitionResult, value: any) => {
-    setEditableItems(prev => prev.map((item, i) => 
-      i === index ? { ...item, [field]: value } : item
-    ))
+    setEditableItems(prev => prev.map((item, i) => {
+      if (i !== index) return item;
+      
+      const updatedItem = { ...item, [field]: value };
+      
+      // If the name field is being updated, re-map the emoji and category
+      if (field === 'name') {
+        console.log(`🔄 Re-mapping emoji for corrected name: "${value}"`);
+        
+        // Simple emoji mapping based on text
+        const getEmojiForFood = (foodName: string) => {
+          const name = foodName.toLowerCase().trim();
+          
+          // Comprehensive emoji mapping
+          const emojiMap: { [key: string]: { emoji: string; category: string; expiryDays: number; unit: string } } = {
+            'banana': { emoji: '🍌', category: 'Produce', expiryDays: 5, unit: 'piece' },
+            'bananas': { emoji: '🍌', category: 'Produce', expiryDays: 5, unit: 'piece' },
+            'apple': { emoji: '🍎', category: 'Produce', expiryDays: 7, unit: 'piece' },
+            'apples': { emoji: '🍎', category: 'Produce', expiryDays: 7, unit: 'piece' },
+            'orange': { emoji: '🍊', category: 'Produce', expiryDays: 7, unit: 'piece' },
+            'oranges': { emoji: '🍊', category: 'Produce', expiryDays: 7, unit: 'piece' },
+            'carrot': { emoji: '🥕', category: 'Produce', expiryDays: 14, unit: 'piece' },
+            'carrots': { emoji: '🥕', category: 'Produce', expiryDays: 14, unit: 'piece' },
+            'tomato': { emoji: '🍅', category: 'Produce', expiryDays: 5, unit: 'piece' },
+            'tomatoes': { emoji: '🍅', category: 'Produce', expiryDays: 5, unit: 'piece' },
+            'milk': { emoji: '🥛', category: 'Dairy', expiryDays: 7, unit: 'carton' },
+            'cheese': { emoji: '🧀', category: 'Dairy', expiryDays: 14, unit: 'block' },
+            'bread': { emoji: '🍞', category: 'Grains', expiryDays: 7, unit: 'loaf' },
+            'chicken': { emoji: '🍗', category: 'Protein', expiryDays: 3, unit: 'lb' },
+            'beef': { emoji: '🥩', category: 'Protein', expiryDays: 3, unit: 'lb' },
+            'fish': { emoji: '🐟', category: 'Protein', expiryDays: 2, unit: 'piece' },
+            'chocolate': { emoji: '🍫', category: 'Snacks', expiryDays: 365, unit: 'bar' },
+            'grapes': { emoji: '🍇', category: 'Produce', expiryDays: 7, unit: 'bunch' },
+            'strawberries': { emoji: '🍓', category: 'Produce', expiryDays: 3, unit: 'container' },
+            'lettuce': { emoji: '🥬', category: 'Produce', expiryDays: 7, unit: 'head' },
+            'onion': { emoji: '🧅', category: 'Produce', expiryDays: 30, unit: 'piece' },
+            'potato': { emoji: '🥔', category: 'Produce', expiryDays: 21, unit: 'piece' },
+            'egg': { emoji: '🥚', category: 'Dairy', expiryDays: 21, unit: 'piece' },
+            'eggs': { emoji: '🥚', category: 'Dairy', expiryDays: 21, unit: 'piece' },
+            'rice': { emoji: '🍚', category: 'Grains', expiryDays: 365, unit: 'bag' },
+            'pasta': { emoji: '🍝', category: 'Grains', expiryDays: 365, unit: 'box' },
+            'pizza': { emoji: '🍕', category: 'Prepared', expiryDays: 3, unit: 'slice' },
+            'burger': { emoji: '🍔', category: 'Prepared', expiryDays: 2, unit: 'piece' },
+            'sandwich': { emoji: '🥪', category: 'Prepared', expiryDays: 2, unit: 'piece' },
+            'water': { emoji: '💧', category: 'Drinks', expiryDays: 365, unit: 'bottle' },
+            'juice': { emoji: '🧃', category: 'Drinks', expiryDays: 14, unit: 'bottle' },
+            'coffee': { emoji: '☕', category: 'Drinks', expiryDays: 365, unit: 'bag' },
+            'tea': { emoji: '🍵', category: 'Drinks', expiryDays: 365, unit: 'box' },
+            'beer': { emoji: '🍺', category: 'Drinks', expiryDays: 365, unit: 'bottle' },
+            'wine': { emoji: '🍷', category: 'Drinks', expiryDays: 365, unit: 'bottle' },
+            'cookies': { emoji: '🍪', category: 'Snacks', expiryDays: 30, unit: 'package' },
+            'chips': { emoji: '🍟', category: 'Snacks', expiryDays: 90, unit: 'bag' },
+            'nuts': { emoji: '🥜', category: 'Snacks', expiryDays: 180, unit: 'bag' },
+            'avocado': { emoji: '🥑', category: 'Produce', expiryDays: 5, unit: 'piece' },
+            'lemon': { emoji: '🍋', category: 'Produce', expiryDays: 14, unit: 'piece' },
+            'lime': { emoji: '🍋', category: 'Produce', expiryDays: 14, unit: 'piece' },
+            'broccoli': { emoji: '🥦', category: 'Produce', expiryDays: 7, unit: 'head' },
+            'cucumber': { emoji: '🥒', category: 'Produce', expiryDays: 7, unit: 'piece' },
+            'mushrooms': { emoji: '🍄', category: 'Produce', expiryDays: 5, unit: 'container' },
+            'corn': { emoji: '🌽', category: 'Produce', expiryDays: 5, unit: 'ear' },
+            'pepper': { emoji: '🫑', category: 'Produce', expiryDays: 7, unit: 'piece' },
+            'bell pepper': { emoji: '🫑', category: 'Produce', expiryDays: 7, unit: 'piece' },
+            'ice cream': { emoji: '🍦', category: 'Frozen', expiryDays: 90, unit: 'container' },
+            'yogurt': { emoji: '🥛', category: 'Dairy', expiryDays: 10, unit: 'container' },
+            'butter': { emoji: '🧈', category: 'Dairy', expiryDays: 30, unit: 'stick' },
+            'bacon': { emoji: '🥓', category: 'Protein', expiryDays: 7, unit: 'package' },
+            'ham': { emoji: '🥩', category: 'Protein', expiryDays: 5, unit: 'lb' },
+            'turkey': { emoji: '🦃', category: 'Protein', expiryDays: 3, unit: 'lb' },
+            'salmon': { emoji: '🐟', category: 'Protein', expiryDays: 2, unit: 'piece' },
+            'tuna': { emoji: '🐟', category: 'Protein', expiryDays: 2, unit: 'can' },
+            'pork': { emoji: '🥓', category: 'Protein', expiryDays: 3, unit: 'lb' },
+            'cereal': { emoji: '🥣', category: 'Grains', expiryDays: 90, unit: 'box' },
+            'oats': { emoji: '🥣', category: 'Grains', expiryDays: 365, unit: 'container' },
+            'oatmeal': { emoji: '🥣', category: 'Grains', expiryDays: 365, unit: 'container' },
+            'soda': { emoji: '🥤', category: 'Drinks', expiryDays: 365, unit: 'can' },
+            'ketchup': { emoji: '🍅', category: 'Condiments', expiryDays: 365, unit: 'bottle' },
+            'mustard': { emoji: '🌭', category: 'Condiments', expiryDays: 365, unit: 'bottle' },
+            'mayonnaise': { emoji: '🥪', category: 'Condiments', expiryDays: 90, unit: 'jar' },
+            'mayo': { emoji: '🥪', category: 'Condiments', expiryDays: 90, unit: 'jar' },
+            'oil': { emoji: '🫒', category: 'Condiments', expiryDays: 365, unit: 'bottle' },
+            'vinegar': { emoji: '🍶', category: 'Condiments', expiryDays: 365, unit: 'bottle' },
+            'popcorn': { emoji: '🍿', category: 'Snacks', expiryDays: 90, unit: 'bag' },
+            'crackers': { emoji: '🍪', category: 'Snacks', expiryDays: 90, unit: 'box' },
+            'frozen pizza': { emoji: '🍕', category: 'Frozen', expiryDays: 90, unit: 'piece' },
+            'frozen vegetables': { emoji: '🥦', category: 'Frozen', expiryDays: 365, unit: 'bag' },
+          };
+          
+          // Try exact match first
+          if (emojiMap[name]) {
+            console.log(`✅ Found exact emoji match for "${name}": ${emojiMap[name].emoji}`);
+            return emojiMap[name];
+          }
+          
+          // Try partial matches
+          for (const [key, mapping] of Object.entries(emojiMap)) {
+            if (name.includes(key) || key.includes(name)) {
+              console.log(`✅ Found partial emoji match for "${name}" -> "${key}": ${mapping.emoji}`);
+              return mapping;
+            }
+          }
+          
+          // Default fallback
+          console.log(`⚠️ No emoji match found for "${name}", using default`);
+          return { emoji: '🥘', category: 'Other', expiryDays: 7, unit: 'piece' };
+        };
+        
+        const mapping = getEmojiForFood(value);
+        console.log(`📋 Re-mapped "${value}" to:`, mapping);
+        
+        // Update the item with the new emoji and category
+        setEditableItems(currentItems => currentItems.map((currentItem, currentIndex) => 
+          currentIndex === index ? {
+            ...currentItem,
+            name: value,
+            emoji: mapping.emoji,
+            category: mapping.category,
+            estimatedExpiryDays: mapping.expiryDays,
+            suggestedUnit: mapping.unit
+          } : currentItem
+        ));
+      }
+      
+      return updatedItem;
+    }))
   }, [])
 
   const removeEditableItem = useCallback((index: number) => {
     setEditableItems(prev => prev.filter((_, i) => i !== index))
   }, [])
 
-  const confirmItems = useCallback(() => {
+  const confirmItems = useCallback(async () => {
     if (editableItems.length > 0) {
-      onItemsRecognized(editableItems)
-      onClose()
+      try {
+        // Save each item to the database
+        const { dataService } = await import('@/lib/data-service')
+        const { format, addDays } = await import('date-fns')
+        
+        for (const item of editableItems) {
+          const expiryDate = format(addDays(new Date(), item.estimatedExpiryDays), 'yyyy-MM-dd')
+          
+          await dataService.addFoodItem({
+            name: item.name,
+            category: item.category,
+            emoji: item.emoji,
+            expiry_date: expiryDate,
+            quantity: item.suggestedQuantity || 1,
+            unit: item.suggestedUnit || 'piece',
+            confidence: item.confidence,
+            notes: `Recognized via AI (confidence: ${Math.round(item.confidence * 100)}%)`,
+          })
+        }
+        
+        // Notify parent component
+        onItemsRecognized(editableItems)
+        onClose()
+      } catch (error) {
+        console.error('Error saving items:', error)
+        setError('Failed to save items. Please try again.')
+      }
     }
   }, [editableItems, onItemsRecognized, onClose])
 

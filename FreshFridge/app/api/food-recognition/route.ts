@@ -18,30 +18,10 @@ export async function POST(request: NextRequest) {
 
     // Recognize food items from image
     const recognizedItems = await aiService.recognizeFoodFromImage(imageBase64);
-    
-    // Save recognized items to database
-    const savedItems = [];
-    for (const item of recognizedItems) {
-      const expiryDate = format(addDays(new Date(), item.estimatedExpiryDays), 'yyyy-MM-dd');
-      
-      const savedItem = await supabaseService.addFoodItem({
-        name: item.name,
-        category: item.category,
-        emoji: item.emoji,
-        expiry_date: expiryDate,
-        quantity: item.suggestedQuantity || 1,
-        unit: item.suggestedUnit || 'piece',
-        confidence: item.confidence,
-        notes: `Recognized via AI (confidence: ${Math.round(item.confidence * 100)}%)`,
-      });
-      
-      if (savedItem) savedItems.push(savedItem);
-    }
 
     return NextResponse.json({
       recognizedItems,
-      savedItems,
-      message: `Successfully recognized and saved ${savedItems.length} food items`
+      message: `Successfully recognized ${recognizedItems.length} food items`
     });
   } catch (error) {
     console.error('Food recognition error:', error);

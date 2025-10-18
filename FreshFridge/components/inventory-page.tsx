@@ -51,6 +51,52 @@ export default function InventoryPage({ onScanFridge }: InventoryPageProps) {
     return "text-[#10B981]"
   }
 
+  const handleEditItem = async (item: FoodItem) => {
+    const newName = prompt('Edit item name:', item.name)
+    if (newName && newName.trim() !== item.name) {
+      try {
+        await dataService.updateFoodItem(item.id, { name: newName.trim() })
+        // Refresh the items list
+        const updatedItems = await dataService.getFoodItems()
+        setItems(updatedItems)
+      } catch (error) {
+        console.error('Error updating item:', error)
+        alert('Failed to update item. Please try again.')
+      }
+    }
+
+    // Optional: Also allow editing quantity
+    const newQuantity = prompt('Edit quantity:', item.quantity.toString())
+    if (newQuantity && newQuantity.trim() !== item.quantity.toString()) {
+      const quantity = parseInt(newQuantity.trim())
+      if (!isNaN(quantity) && quantity > 0) {
+        try {
+          await dataService.updateFoodItem(item.id, { quantity })
+          // Refresh the items list
+          const updatedItems = await dataService.getFoodItems()
+          setItems(updatedItems)
+        } catch (error) {
+          console.error('Error updating quantity:', error)
+          alert('Failed to update quantity. Please try again.')
+        }
+      }
+    }
+  }
+
+  const handleRemoveItem = async (item: FoodItem) => {
+    if (confirm(`Are you sure you want to remove "${item.name}" from your inventory?`)) {
+      try {
+        await dataService.deleteFoodItem(item.id)
+        // Refresh the items list
+        const updatedItems = await dataService.getFoodItems()
+        setItems(updatedItems)
+      } catch (error) {
+        console.error('Error deleting item:', error)
+        alert('Failed to remove item. Please try again.')
+      }
+    }
+  }
+
   return (
     <div className="space-y-12 px-8 lg:px-16">
       <div className="pt-24 pb-16">
@@ -142,10 +188,16 @@ export default function InventoryPage({ onScanFridge }: InventoryPageProps) {
               </div>
 
               <div className="flex gap-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                <button className="flex-1 bg-black text-white rounded-xl py-3 px-6 font-medium text-[15px] hover-lift-small transition-all duration-200">
+                <button 
+                  onClick={() => handleEditItem(item)}
+                  className="flex-1 bg-black text-white rounded-xl py-3 px-6 font-medium text-[15px] hover-lift-small transition-all duration-200"
+                >
                   Edit
                 </button>
-                <button className="flex-1 bg-[#F5F5F5] text-black rounded-xl py-3 px-6 font-medium text-[15px] hover:bg-[#E5E5E5] transition-all duration-200">
+                <button 
+                  onClick={() => handleRemoveItem(item)}
+                  className="flex-1 bg-[#F5F5F5] text-black rounded-xl py-3 px-6 font-medium text-[15px] hover:bg-[#E5E5E5] transition-all duration-200"
+                >
                   Remove
                 </button>
               </div>

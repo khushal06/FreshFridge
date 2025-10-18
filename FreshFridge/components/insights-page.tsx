@@ -1,7 +1,14 @@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from "recharts"
-import { Download, Calendar } from "lucide-react"
+import { Download, Calendar, RefreshCw } from "lucide-react"
+import { useState, useEffect } from "react"
+import { dataService } from "@/lib/data-service"
 
 export default function InsightsPage() {
+  const [spendingData, setSpendingData] = useState<{ month: string; amount: number }[]>([])
+  const [currentMonthSpending, setCurrentMonthSpending] = useState(0)
+  const [recentTrips, setRecentTrips] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+
   const wasteData = [
     { month: "Jan", waste: 12 },
     { month: "Feb", waste: 8 },
@@ -11,14 +18,55 @@ export default function InsightsPage() {
     { month: "Jun", waste: 9 },
   ]
 
-  const spendingData = [
-    { month: "Jan", amount: 180 },
-    { month: "Feb", amount: 220 },
-    { month: "Mar", amount: 195 },
-    { month: "Apr", amount: 250 },
-    { month: "May", amount: 210 },
-    { month: "Jun", amount: 230 },
-  ]
+  const loadSpendingData = async () => {
+    try {
+      console.log('🔄 Loading spending data...')
+      setLoading(true)
+      const [monthlySpending, currentSpending, recentGroceryTrips] = await Promise.all([
+        dataService.getMonthlySpending(),
+        dataService.getCurrentMonthSpending(),
+        dataService.getGroceryLogs()
+      ])
+      
+      console.log('📊 Monthly spending data:', monthlySpending)
+      console.log('💰 Current month spending:', currentSpending)
+      console.log('🛒 Recent grocery trips:', recentGroceryTrips)
+      
+      setSpendingData(monthlySpending)
+      setCurrentMonthSpending(currentSpending)
+      setRecentTrips(recentGroceryTrips.slice(0, 10)) // Show last 10 trips
+    } catch (error) {
+      console.error('Error loading spending data:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadSpendingData()
+  }, [])
+
+  // Refresh data when page becomes visible (user navigates back to insights)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        loadSpendingData()
+      }
+    }
+
+    const handleGroceryLogged = () => {
+      console.log('🛒 Grocery logged event received, refreshing insights...')
+      loadSpendingData()
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('groceryLogged', handleGroceryLogged)
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('groceryLogged', handleGroceryLogged)
+    }
+  }, [])
 
   return (
     <div className="space-y-12 px-8 lg:px-16">
@@ -31,7 +79,15 @@ export default function InsightsPage() {
           <div className="flex items-center gap-4">
             <button className="flex items-center px-6 py-3 bg-white border border-[rgba(0,0,0,0.06)] rounded-xl hover:bg-[#FAFAFA] transition-all duration-200 text-[15px] font-medium shadow-subtle">
               <Calendar className="w-4 h-4 mr-3" />
-              Last 6 months
+              Past 1 month
+            </button>
+            <button 
+              onClick={loadSpendingData}
+              disabled={loading}
+              className="flex items-center px-6 py-3 bg-white border border-[rgba(0,0,0,0.06)] rounded-xl hover:bg-[#FAFAFA] transition-all duration-200 text-[15px] font-medium shadow-subtle disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <RefreshCw className={`w-4 h-4 mr-3 ${loading ? 'animate-spin' : ''}`} />
+              Refresh
             </button>
             <button className="flex items-center px-6 py-3 bg-black text-white rounded-xl shadow-subtle hover-lift-small transition-all duration-200 text-[15px] font-medium">
               <Download className="w-4 h-4 mr-3" />
@@ -52,10 +108,15 @@ export default function InsightsPage() {
 
         <div className="bg-white rounded-2xl p-8 text-center shadow-subtle hover-lift transition-all duration-300">
           <div className="text-[56px] font-semibold text-black mb-2 leading-none tracking-[-0.03em] font-mono animate-count-up">
-            $230
+            {loading ? '...' : `$${Math.round(currentMonthSpending)}`}
           </div>
           <div className="text-[14px] text-[#737373] uppercase tracking-[0.1em] font-medium mb-3">This Month</div>
-          <div className="text-xs text-[#EF4444] font-medium">↑ 5% from last month</div>
+          <div className="text-xs text-[#EF4444] font-medium">
+            {spendingData.length > 1 ? 
+              `${Math.round(((currentMonthSpending - spendingData[spendingData.length - 2]?.amount || 0) / (spendingData[spendingData.length - 2]?.amount || 1)) * 100)}% from last month` :
+              'No previous data'
+            }
+          </div>
         </div>
 
         <div className="bg-white rounded-2xl p-8 text-center shadow-subtle hover-lift transition-all duration-300">
@@ -102,31 +163,96 @@ export default function InsightsPage() {
         <div className="bg-white rounded-2xl p-10 shadow-subtle">
           <h2 className="text-[24px] font-semibold text-black mb-10 tracking-[-0.02em]">Grocery Spending</h2>
           <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={spendingData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.04)" />
-                <XAxis dataKey="month" stroke="#737373" style={{ fontSize: "15px", fontFamily: "-apple-system" }} />
-                <YAxis stroke="#737373" style={{ fontSize: "15px", fontFamily: "-apple-system" }} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "#FFFFFF",
-                    border: "none",
-                    borderRadius: "12px",
-                    boxShadow: "0 10px 25px rgba(0,0,0,0.12)",
-                    padding: "12px 16px",
-                  }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="amount"
-                  stroke="#000000"
-                  strokeWidth={3}
-                  dot={{ fill: "#000000", strokeWidth: 2, r: 5 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+            {loading ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-gray-500">Loading spending data...</div>
+              </div>
+            ) : spendingData.length === 0 ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center">
+                  <div className="text-gray-500 mb-2">No spending data yet</div>
+                  <div className="text-sm text-gray-400">Log your grocery purchases to see spending trends</div>
+                </div>
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={spendingData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.04)" />
+                  <XAxis dataKey="month" stroke="#737373" style={{ fontSize: "15px", fontFamily: "-apple-system" }} />
+                  <YAxis stroke="#737373" style={{ fontSize: "15px", fontFamily: "-apple-system" }} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "#FFFFFF",
+                      border: "none",
+                      borderRadius: "12px",
+                      boxShadow: "0 10px 25px rgba(0,0,0,0.12)",
+                      padding: "12px 16px",
+                    }}
+                    formatter={(value: number) => [`$${value}`, 'Amount']}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="amount"
+                    stroke="#000000"
+                    strokeWidth={3}
+                    dot={{ fill: "#000000", strokeWidth: 2, r: 5 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </div>
+      </div>
+
+      {/* Recent Grocery Trips */}
+      <div className="bg-white rounded-2xl p-10 shadow-subtle">
+        <h2 className="text-[24px] font-semibold text-black mb-10 tracking-[-0.02em]">Recent Grocery Trips</h2>
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="text-gray-500">Loading recent trips...</div>
+          </div>
+        ) : recentTrips.length === 0 ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center">
+              <div className="text-gray-500 mb-2">No grocery trips yet</div>
+              <div className="text-sm text-gray-400">Log your grocery purchases to see them here</div>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {recentTrips.map((trip, index) => (
+              <div key={trip.id || index} className="flex items-center justify-between p-6 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                    <span className="text-xl">🛒</span>
+                  </div>
+                  <div>
+                    <h3 className="font-medium text-gray-900 text-[15px]">{trip.store_name}</h3>
+                    <p className="text-[#737373] text-[13px]">
+                      {new Date(trip.date).toLocaleDateString('en-US', { 
+                        weekday: 'short', 
+                        month: 'short', 
+                        day: 'numeric' 
+                      })}
+                    </p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-lg font-semibold text-gray-900">
+                    ${trip.amount.toFixed(2)}
+                  </div>
+                  <div className="text-[#737373] text-[13px]">
+                    {new Date(trip.created_at).toLocaleTimeString('en-US', { 
+                      hour: 'numeric', 
+                      minute: '2-digit',
+                      hour12: true 
+                    })}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )

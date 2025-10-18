@@ -29,11 +29,37 @@ export default function RecipePage() {
   const generateSuggestions = async () => {
     setGeneratingSuggestions(true)
     try {
-      const foodItems = await dataService.getFoodItems()
-      const suggestions = await dataService.generateRecipeSuggestions(foodItems)
-      setRecipes(suggestions)
+      console.log('🍳 Generating AI recipes with KronosAI...')
+      
+      // Call the AI recipes API
+      const response = await fetch('/api/ai-recipes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+      
+      if (!response.ok) {
+        throw new Error('Failed to generate AI recipes')
+      }
+      
+      const result = await response.json()
+      console.log('✅ AI recipes generated:', result)
+      
+      // Refresh the recipes list to show the new AI-generated recipes
+      const updatedRecipes = await dataService.getRecipes()
+      setRecipes(updatedRecipes)
+      
     } catch (error) {
-      console.error('Error generating recipe suggestions:', error)
+      console.error('Error generating AI recipe suggestions:', error)
+      // Fallback to regular recipe suggestions
+      try {
+        const foodItems = await dataService.getFoodItems()
+        const suggestions = await dataService.generateRecipeSuggestions(foodItems)
+        setRecipes(suggestions)
+      } catch (fallbackError) {
+        console.error('Fallback recipe generation also failed:', fallbackError)
+      }
     } finally {
       setGeneratingSuggestions(false)
     }

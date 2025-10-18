@@ -1,14 +1,10 @@
-import { supabase, FoodItem, Recipe, ChatMessage } from './supabase'
+import { supabase, FoodItem, Recipe, ChatMessage, GroceryLog } from './supabase'
 import { v4 as uuidv4 } from 'uuid'
 
 class SupabaseService {
   // Food Items CRUD operations
   async addFoodItem(item: Omit<FoodItem, 'id' | 'added_date' | 'created_at' | 'updated_at'>): Promise<FoodItem | null> {
     try {
-      if (!supabase) {
-        console.error('Supabase client not initialized')
-        return null
-      }
       
       const id = uuidv4()
       const addedDate = new Date().toISOString().split('T')[0]
@@ -57,10 +53,6 @@ class SupabaseService {
 
   async getAllFoodItems(): Promise<FoodItem[]> {
     try {
-      if (!supabase) {
-        console.error('Supabase client not initialized')
-        return []
-      }
       
       const { data, error } = await supabase
         .from('food_items')
@@ -235,18 +227,113 @@ class SupabaseService {
     }
   }
 
+  // Grocery Log operations
+  async addGroceryLog(log: Omit<GroceryLog, 'id' | 'created_at'>): Promise<GroceryLog | null> {
+    try {
+      
+      const id = uuidv4()
+      const { data, error } = await supabase
+        .from('grocery_logs')
+        .insert({
+          id,
+          store_name: log.store_name,
+          amount: log.amount,
+          date: log.date,
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error adding grocery log:', error)
+      return null
+    }
+  }
+
+  async getGroceryLogs(startDate?: string, endDate?: string): Promise<GroceryLog[]> {
+    try {
+      
+      let query = supabase
+        .from('grocery_logs')
+        .select('*')
+        .order('date', { ascending: false })
+
+      if (startDate) {
+        query = query.gte('date', startDate)
+      }
+      
+      if (endDate) {
+        query = query.lte('date', endDate)
+      }
+
+      const { data, error } = await query
+
+      if (error) throw error
+      return data || []
+    } catch (error) {
+      console.error('Error fetching grocery logs:', error)
+      return []
+    }
+  }
+
+  async getMonthlySpending(): Promise<{ month: string; amount: number }[]> {
+    try {
+      
+      const { data, error } = await supabase
+        .from('grocery_logs')
+        .select('date, amount')
+        .order('date', { ascending: true })
+
+      if (error) throw error
+
+      // Group by month and sum amounts
+      const monthlyData: { [key: string]: number } = {}
+      
+      data?.forEach(log => {
+        const month = new Date(log.date).toISOString().slice(0, 7) // YYYY-MM format
+        monthlyData[month] = (monthlyData[month] || 0) + log.amount
+      })
+
+      // Convert to array format
+      const result = Object.entries(monthlyData).map(([month, amount]) => ({
+        month: new Date(month + '-01').toLocaleDateString('en-US', { month: 'short' }),
+        amount
+      }))
+
+      return result
+    } catch (error) {
+      console.error('Error fetching monthly spending:', error)
+      return []
+    }
+  }
+
+  async getCurrentMonthSpending(): Promise<number> {
+    try {
+      
+      const now = new Date()
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]
+      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0]
+      
+      const { data, error } = await supabase
+        .from('grocery_logs')
+        .select('amount')
+        .gte('date', startOfMonth)
+        .lte('date', endOfMonth)
+
+      if (error) throw error
+
+      const total = data?.reduce((sum, log) => sum + log.amount, 0) || 0
+      return total
+    } catch (error) {
+      console.error('Error fetching current month spending:', error)
+      return 0
+    }
+  }
+
   // Utility methods
   async getStats() {
     try {
-      if (!supabase) {
-        console.error('Supabase client not initialized')
-        return {
-          totalItems: 0,
-          urgentItems: 0,
-          weeklySavings: 0,
-          recipesThisWeek: 0,
-        }
-      }
       
       const [totalResult, urgentResult] = await Promise.all([
         supabase.from('food_items').select('id', { count: 'exact' }),

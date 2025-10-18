@@ -3,10 +3,8 @@ import { createClient } from '@supabase/supabase-js'
 const supabaseUrl = 'https://sborzwebjgskeioexvuv.supabase.co'
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNib3J6d2Viamdza2Vpb2V4dnV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA3Mzc5NzUsImV4cCI6MjA3NjMxMzk3NX0.E5TWwl375VgeLrtZwQ41cR8a_FNABabQhJjeQFZJWaI'
 
-// Create client only on client side to avoid SSR issues
-export const supabase = typeof window !== 'undefined' 
-  ? createClient(supabaseUrl, supabaseKey)
-  : null as any
+// Create client for both client and server side
+export const supabase = createClient(supabaseUrl, supabaseKey)
 
 // Database types
 export interface FoodItem {
@@ -49,5 +47,13 @@ export interface ChatMessage {
   is_user: boolean
   timestamp: string
   session_id: string
+  created_at?: string
+}
+
+export interface GroceryLog {
+  id: string
+  store_name: string
+  amount: number
+  date: string
   created_at?: string
 }

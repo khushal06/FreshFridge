@@ -1,6 +1,7 @@
 import { supabaseService } from './supabase-service'
-import { FoodItem, Recipe } from './supabase'
+import { FoodItem, Recipe, GroceryLog } from './supabase'
 import { aiService } from './ai-service'
+import { kronosService, KronosRecipe } from './kronos-service'
 
 export interface QuickStats {
   totalItems: number
@@ -54,6 +55,74 @@ class DataService {
       console.error('Error generating recipe suggestions:', error)
       return []
     }
+  }
+
+  // Generate AI recipes using KronosAI
+  async generateAIRecipes(): Promise<KronosRecipe[]> {
+    try {
+      if (typeof window !== 'undefined') {
+        console.error('KronosAI service can only be called on server side');
+        return [];
+      }
+      
+      const availableItems = await this.getFoodItems()
+      console.log('🍳 Generating AI recipes for inventory:', availableItems)
+      
+      const aiRecipes = await kronosService.generateRecipesFromInventory(availableItems)
+      
+      // Convert KronosRecipe to Recipe format and save to database
+      const recipes: Recipe[] = aiRecipes.map(kronosRecipe => ({
+        id: '', // Will be set by Supabase
+        title: kronosRecipe.title,
+        subtitle: kronosRecipe.subtitle,
+        emoji: kronosRecipe.emoji,
+        cook_time: kronosRecipe.cookTime,
+        servings: kronosRecipe.servings,
+        ingredients: kronosRecipe.ingredients.join('\n'),
+        instructions: kronosRecipe.instructions.join('\n'),
+        category: kronosRecipe.category,
+        difficulty: kronosRecipe.difficulty,
+        rating: kronosRecipe.rating,
+        review_count: kronosRecipe.reviewCount,
+        calories: kronosRecipe.calories,
+        description: kronosRecipe.description,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }));
+
+      // Save recipes to database
+      for (const recipe of recipes) {
+        await supabaseService.addRecipe(recipe)
+      }
+      
+      console.log('✅ Generated and saved AI recipes:', recipes.length)
+      return aiRecipes
+    } catch (error) {
+      console.error('Error generating AI recipes:', error)
+      return []
+    }
+  }
+
+  // Grocery Logs
+  async addGroceryLog(storeName: string, amount: number, date?: string): Promise<GroceryLog | null> {
+    const logDate = date || new Date().toISOString().split('T')[0]
+    return await supabaseService.addGroceryLog({
+      store_name: storeName,
+      amount,
+      date: logDate,
+    })
+  }
+
+  async getGroceryLogs(startDate?: string, endDate?: string): Promise<GroceryLog[]> {
+    return await supabaseService.getGroceryLogs(startDate, endDate)
+  }
+
+  async getMonthlySpending(): Promise<{ month: string; amount: number }[]> {
+    return await supabaseService.getMonthlySpending()
+  }
+
+  async getCurrentMonthSpending(): Promise<number> {
+    return await supabaseService.getCurrentMonthSpending()
   }
 
   // Stats
