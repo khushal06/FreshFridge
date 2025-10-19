@@ -364,7 +364,7 @@ export default function LandingPage({ onEnterApp }: { onEnterApp: () => void }) 
                   "Everything in Free",
                   "500+ premium recipes",
                   "Advanced analytics",
-                  "Meal planning",
+                  "AI powered Meal planning",
                   "Family sharing",
                   "Priority support",
                 ].map((item, i) => (
