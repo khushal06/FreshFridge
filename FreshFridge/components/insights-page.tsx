@@ -120,7 +120,7 @@ export default function InsightsPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-8">
         <div className="bg-white rounded-2xl p-8 text-center shadow-subtle hover-lift transition-all duration-300">
           <div className="text-[56px] font-semibold text-black mb-2 leading-none tracking-[-0.03em] font-mono animate-count-up">
             9
@@ -142,13 +142,6 @@ export default function InsightsPage() {
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl p-8 text-center shadow-subtle hover-lift transition-all duration-300">
-          <div className="text-[56px] font-semibold text-black mb-2 leading-none tracking-[-0.03em] font-mono animate-count-up">
-            85%
-          </div>
-          <div className="text-[14px] text-[#737373] uppercase tracking-[0.1em] font-medium mb-3">Efficiency</div>
-          <div className="text-xs text-[#10B981] font-medium">↑ 3% from last month</div>
-        </div>
 
         <div className="bg-white rounded-2xl p-8 text-center shadow-subtle hover-lift transition-all duration-300">
           <div className="text-[56px] font-semibold text-black mb-2 leading-none tracking-[-0.03em] font-mono animate-count-up">

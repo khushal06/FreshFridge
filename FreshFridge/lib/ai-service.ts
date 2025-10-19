@@ -317,10 +317,26 @@ class AIService {
       ));
 
       // Convert Clarifai concepts to our food recognition format
-      const foodItems: FoodRecognitionResult[] = concepts
-        .filter((concept: any) => concept.value > 0.5) // Lower threshold to catch more items
-        .slice(0, 5) // Limit to top 5 items
-        .map((concept: any) => {
+      // Sort by confidence and only take the top item if it's significantly more confident than others
+      const sortedConcepts = concepts
+        .filter((concept: any) => concept.value > 0.04)
+        .sort((a: any, b: any) => b.value - a.value); // Sort by confidence descending
+      
+      let selectedConcepts: any[] = [];
+      
+      if (sortedConcepts.length > 0) {
+        const topConcept = sortedConcepts[0];
+        const topConfidence = topConcept.value;
+        
+        // Only include the top item if it's significantly more confident than the second item
+        // OR if there's only one item above threshold
+        if (sortedConcepts.length === 1 || 
+            (sortedConcepts.length > 1 && topConfidence > sortedConcepts[1].value * 1.5)) {
+          selectedConcepts = [topConcept]; // Only take the top 1 item
+        }
+      }
+      
+      const foodItems: FoodRecognitionResult[] = selectedConcepts.map((concept: any) => {
           const foodName = concept.name;
           const confidence = concept.value;
           

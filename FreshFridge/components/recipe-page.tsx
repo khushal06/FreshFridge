@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Clock, Users, Star, Search, Heart, Loader2, Sparkles, Trash2 } from "lucide-react"
+import { Clock, Users, Search, Heart, Loader2, Sparkles, Trash2 } from "lucide-react"
 import { dataService } from "@/lib/data-service"
 import { Recipe } from "@/lib/supabase"
 
@@ -152,11 +152,6 @@ export default function RecipePage() {
               <div className="flex items-center text-black">
                 <Users className="w-5 h-5 mr-3 text-[#737373]" />
                 <span className="font-medium">{filteredRecipes[0].servings} servings</span>
-              </div>
-              <div className="flex items-center text-black">
-                <Star className="w-5 h-5 mr-3 text-[#FBBC04] fill-[#FBBC04]" />
-                <span className="font-medium font-mono">{filteredRecipes[0].rating}</span>
-                <span className="text-[#737373] ml-2">({filteredRecipes[0].reviews} reviews)</span>
               </div>
               <div className="text-black font-medium font-mono">{filteredRecipes[0].calories} cal</div>
             </div>

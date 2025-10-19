@@ -302,20 +302,45 @@ class SupabaseService {
 
       if (error) throw error
 
+      console.log('📅 Raw grocery log dates:', data?.map(log => ({ date: log.date, amount: log.amount })))
+
       // Group by month and sum amounts
       const monthlyData: { [key: string]: number } = {}
       
       data?.forEach(log => {
-        const month = new Date(log.date).toISOString().slice(0, 7) // YYYY-MM format
-        monthlyData[month] = (monthlyData[month] || 0) + log.amount
+        // Parse the date more carefully - handle both ISO strings and date objects
+        let date: Date
+        if (typeof log.date === 'string') {
+          // If it's a string, parse it directly
+          date = new Date(log.date)
+        } else {
+          // If it's already a Date object
+          date = log.date
+        }
+        
+        // Get the month in YYYY-MM format
+        const year = date.getFullYear()
+        const month = String(date.getMonth() + 1).padStart(2, '0') // Add 1 because getMonth() is 0-indexed
+        const monthKey = `${year}-${month}`
+        
+        console.log(`🗓️ Processing date: ${log.date} -> ${date.toISOString()} -> ${monthKey}`)
+        
+        monthlyData[monthKey] = (monthlyData[monthKey] || 0) + log.amount
       })
 
-      // Convert to array format
-      const result = Object.entries(monthlyData).map(([month, amount]) => ({
-        month: new Date(month + '-01').toLocaleDateString('en-US', { month: 'short' }),
-        amount
-      }))
+      console.log('📊 Monthly data grouped:', monthlyData)
 
+      // Convert to array format
+      const result = Object.entries(monthlyData).map(([month, amount]) => {
+        const [year, monthNum] = month.split('-')
+        const date = new Date(parseInt(year), parseInt(monthNum) - 1, 1) // monthNum - 1 because Date constructor is 0-indexed
+        return {
+          month: date.toLocaleDateString('en-US', { month: 'short' }),
+          amount
+        }
+      })
+
+      console.log('📈 Final spending data:', result)
       return result
     } catch (error) {
       console.error('Error fetching monthly spending:', error)
