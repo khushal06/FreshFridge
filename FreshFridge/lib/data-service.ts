@@ -139,6 +139,10 @@ class DataService {
     return await supabaseService.getCurrentMonthSpending()
   }
 
+  async deleteGroceryLog(id: string): Promise<boolean> {
+    return await supabaseService.deleteGroceryLog(id)
+  }
+
   // Stats
   async getStats(): Promise<QuickStats> {
     return await supabaseService.getStats()

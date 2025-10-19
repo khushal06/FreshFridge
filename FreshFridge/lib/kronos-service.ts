@@ -1,4 +1,5 @@
-import { FoodItem } from './supabase';
+import { FoodItem } from './supabase'
+import { supabaseService } from './supabase-service';
 
 export interface KronosRecipe {
   title: string;
@@ -226,7 +227,7 @@ class KronosService {
     try {
       // Temporarily use fallback responses while KronosAI API endpoint is being resolved
       console.log('🤖 Using enhanced fallback responses for kitchen assistant:', message);
-      return this.getFallbackChatResponse(message, foodItems);
+      return await this.getDynamicFallbackResponse(message, foodItems);
       
       /* 
       // TODO: Re-enable when KronosAI API endpoint is confirmed
@@ -281,6 +282,35 @@ class KronosService {
     }
   }
 
+  private async getDynamicFallbackResponse(message: string, foodItems: FoodItem[]): Promise<string> {
+    const messageLower = message.toLowerCase();
+    
+    // For budget/spending questions, fetch real spending data
+    if (messageLower.includes('budget') || messageLower.includes('spend') || messageLower.includes('money') || messageLower.includes('cost')) {
+      try {
+        const currentMonthSpending = await supabaseService.getCurrentMonthSpending();
+        const monthlySpending = await supabaseService.getMonthlySpending();
+        
+        if (currentMonthSpending > 0) {
+          const recommendedBudget = Math.max(currentMonthSpending * 1.2, 100); // 20% buffer, minimum $100
+          return `Based on your current month spending of $${currentMonthSpending.toFixed(2)}, I'd recommend budgeting $${recommendedBudget.toFixed(0)}-$${(recommendedBudget * 1.1).toFixed(0)} for groceries next month. This gives you a 20% buffer for flexibility while staying close to your actual spending patterns!`;
+        } else if (monthlySpending.length > 0) {
+          const avgSpending = monthlySpending.reduce((sum, month) => sum + month.amount, 0) / monthlySpending.length;
+          const recommendedBudget = Math.max(avgSpending * 1.2, 100);
+          return `Based on your average monthly spending of $${avgSpending.toFixed(2)}, I'd recommend budgeting $${recommendedBudget.toFixed(0)}-$${(recommendedBudget * 1.1).toFixed(0)} for groceries next month. Track your spending in the Insights page to refine this budget over time!`;
+        } else {
+          return `I don't see any spending data yet. Once you log some grocery trips, I can provide personalized budget recommendations based on your actual spending patterns!`;
+        }
+      } catch (error) {
+        console.error('Error fetching spending data for budget response:', error);
+        return this.getFallbackChatResponse(message, foodItems);
+      }
+    }
+    
+    // For other questions, use the regular fallback
+    return this.getFallbackChatResponse(message, foodItems);
+  }
+
   private getFallbackChatResponse(message: string, foodItems: FoodItem[]): string {
     const messageLower = message.toLowerCase();
     
@@ -313,9 +343,6 @@ class KronosService {
       return `To reduce food waste, check expiration dates regularly, use expiring items first, and consider meal planning. Your current inventory looks well-managed!`;
     }
     
-    if (messageLower.includes('budget') || messageLower.includes('spend') || messageLower.includes('money') || messageLower.includes('cost')) {
-      return `Based on your spending habits, I'd recommend budgeting $150-200 for groceries next month. This should cover your essentials while allowing for some flexibility. Track your spending in the Insights page to refine your budget over time!`;
-    }
     
     if (messageLower.includes('grocery') || messageLower.includes('shopping') || messageLower.includes('trip')) {
       return `For grocery trips, I recommend planning meals based on your current inventory first. Check what's expiring soon and build your shopping list around those items to reduce waste and save money!`;

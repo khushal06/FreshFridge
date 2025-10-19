@@ -42,6 +42,29 @@ export default function InsightsPage() {
     }
   }
 
+  const handleDeleteTrip = async (tripId: string) => {
+    if (!confirm('Are you sure you want to delete this grocery trip? This action cannot be undone.')) {
+      return
+    }
+
+    try {
+      const success = await dataService.deleteGroceryLog(tripId)
+      
+      if (success) {
+        // Remove the trip from the local state
+        setRecentTrips(prev => prev.filter(trip => trip.id !== tripId))
+        
+        // Refresh the data to update stats and monthly spending
+        await loadSpendingData()
+      } else {
+        alert('Failed to delete grocery trip. Please try again.')
+      }
+    } catch (error) {
+      console.error('Error deleting grocery trip:', error)
+      alert('Failed to delete grocery trip. Please try again.')
+    }
+  }
+
   useEffect(() => {
     loadSpendingData()
   }, [])
@@ -237,17 +260,28 @@ export default function InsightsPage() {
                     </p>
                   </div>
                 </div>
-                <div className="text-right">
-                  <div className="text-lg font-semibold text-gray-900">
-                    ${trip.amount.toFixed(2)}
+                <div className="flex items-center gap-4">
+                  <div className="text-right">
+                    <div className="text-lg font-semibold text-gray-900">
+                      ${trip.amount.toFixed(2)}
+                    </div>
+                    <div className="text-[#737373] text-[13px]">
+                      {new Date(trip.created_at).toLocaleTimeString('en-US', { 
+                        hour: 'numeric', 
+                        minute: '2-digit',
+                        hour12: true 
+                      })}
+                    </div>
                   </div>
-                  <div className="text-[#737373] text-[13px]">
-                    {new Date(trip.created_at).toLocaleTimeString('en-US', { 
-                      hour: 'numeric', 
-                      minute: '2-digit',
-                      hour12: true 
-                    })}
-                  </div>
+                  <button
+                    onClick={() => handleDeleteTrip(trip.id)}
+                    className="w-8 h-8 bg-red-100 hover:bg-red-200 rounded-lg flex items-center justify-center transition-colors group"
+                    title="Delete trip"
+                  >
+                    <svg className="w-4 h-4 text-red-600 group-hover:text-red-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
                 </div>
               </div>
             ))}
