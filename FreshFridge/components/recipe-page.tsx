@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Clock, Users, Star, Search, Heart, Loader2, Sparkles } from "lucide-react"
+import { Clock, Users, Star, Search, Heart, Loader2, Sparkles, Trash2 } from "lucide-react"
 import { dataService } from "@/lib/data-service"
 import { Recipe } from "@/lib/supabase"
 
@@ -10,6 +10,8 @@ export default function RecipePage() {
   const [loading, setLoading] = useState(true)
   const [generatingSuggestions, setGeneratingSuggestions] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
+  const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null)
+  const [deletingRecipe, setDeletingRecipe] = useState<string | null>(null)
 
   useEffect(() => {
     const loadRecipes = async () => {
@@ -62,6 +64,30 @@ export default function RecipePage() {
       }
     } finally {
       setGeneratingSuggestions(false)
+    }
+  }
+
+  const handleDeleteRecipe = async (recipeId: string) => {
+    if (!confirm('Are you sure you want to delete this recipe?')) {
+      return
+    }
+
+    setDeletingRecipe(recipeId)
+    try {
+      const success = await dataService.deleteRecipe(recipeId)
+      if (success) {
+        // Remove the recipe from the local state
+        setRecipes(prev => prev.filter(recipe => recipe.id !== recipeId))
+        console.log('✅ Recipe deleted successfully')
+      } else {
+        console.error('❌ Failed to delete recipe')
+        alert('Failed to delete recipe. Please try again.')
+      }
+    } catch (error) {
+      console.error('Error deleting recipe:', error)
+      alert('Failed to delete recipe. Please try again.')
+    } finally {
+      setDeletingRecipe(null)
     }
   }
 
@@ -205,18 +231,28 @@ export default function RecipePage() {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-center gap-2 mb-8">
-                  <Star className="w-4 h-4 text-[#FBBC04] fill-[#FBBC04]" />
-                  <span className="text-[15px] text-black font-medium font-mono">{recipe.rating}</span>
-                  <span className="text-[15px] text-[#737373]">({recipe.reviews})</span>
-                </div>
 
                 <div className="flex gap-3">
-                  <button className="flex-1 bg-black text-white rounded-xl py-3 px-6 font-medium text-[15px] hover-lift-small transition-all duration-200">
+                  <button 
+                    onClick={() => setSelectedRecipe(recipe)}
+                    className="flex-1 bg-black text-white rounded-xl py-3 px-6 font-medium text-[15px] hover-lift-small transition-all duration-200"
+                  >
                     View Recipe
                   </button>
                   <button className="px-4 py-3 bg-white border border-[rgba(0,0,0,0.06)] rounded-xl hover:bg-[#FAFAFA] transition-all duration-200">
                     <Heart className="w-4 h-4 text-black" />
+                  </button>
+                  <button 
+                    onClick={() => handleDeleteRecipe(recipe.id)}
+                    disabled={deletingRecipe === recipe.id}
+                    className="px-4 py-3 bg-red-50 border border-red-200 rounded-xl hover:bg-red-100 transition-all duration-200 disabled:opacity-50"
+                    title="Delete Recipe"
+                  >
+                    {deletingRecipe === recipe.id ? (
+                      <Loader2 className="w-4 h-4 text-red-600 animate-spin" />
+                    ) : (
+                      <Trash2 className="w-4 h-4 text-red-600" />
+                    )}
                   </button>
                 </div>
               </div>
@@ -245,6 +281,100 @@ export default function RecipePage() {
             )}
             {generatingSuggestions ? 'Generating...' : 'Generate AI Suggestions'}
           </button>
+        </div>
+      )}
+
+      {/* Recipe Detail Modal */}
+      {selectedRecipe && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-100">
+              <h2 className="text-2xl font-bold text-gray-900">{selectedRecipe.title}</h2>
+              <button 
+                onClick={() => setSelectedRecipe(null)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-6">
+              {/* Recipe Info */}
+              <div className="text-center mb-8">
+                <div className="text-6xl mb-4">{selectedRecipe.emoji}</div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">{selectedRecipe.subtitle}</h3>
+                <div className="flex items-center justify-center gap-6 text-gray-600">
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-4 h-4" />
+                    <span>{selectedRecipe.cook_time}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Users className="w-4 h-4" />
+                    <span>{selectedRecipe.servings} servings</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span>🔥</span>
+                    <span>{selectedRecipe.calories} cal</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Ingredients */}
+              <div className="mb-8">
+                <h4 className="text-lg font-semibold text-gray-900 mb-4">Ingredients</h4>
+                <div className="bg-gray-50 rounded-xl p-4">
+                  <ul className="space-y-2">
+                    {Array.isArray(selectedRecipe.ingredients) ? (
+                      selectedRecipe.ingredients.map((ingredient, index) => (
+                        <li key={index} className="flex items-start gap-3">
+                          <span className="text-gray-400 mt-1">•</span>
+                          <span className="text-gray-700">{ingredient}</span>
+                        </li>
+                      ))
+                    ) : (
+                      <li className="text-gray-700">{selectedRecipe.ingredients}</li>
+                    )}
+                  </ul>
+                </div>
+              </div>
+
+              {/* Instructions */}
+              <div className="mb-8">
+                <h4 className="text-lg font-semibold text-gray-900 mb-4">Instructions</h4>
+                <div className="space-y-4">
+                  {Array.isArray(selectedRecipe.instructions) ? (
+                    selectedRecipe.instructions.map((instruction, index) => (
+                      <div key={index} className="flex gap-4">
+                        <div className="flex-shrink-0 w-8 h-8 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-semibold">
+                          {index + 1}
+                        </div>
+                        <p className="text-gray-700 pt-1">{instruction}</p>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="flex gap-4">
+                      <div className="flex-shrink-0 w-8 h-8 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-semibold">
+                        1
+                      </div>
+                      <p className="text-gray-700 pt-1">{selectedRecipe.instructions}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Recipe Info */}
+              <div className="border-t border-gray-100 pt-6">
+                <div className="flex items-center justify-between text-sm text-gray-600">
+                  <span>Category: <span className="font-medium">{selectedRecipe.category}</span></span>
+                  <span>Difficulty: <span className="font-medium">{selectedRecipe.difficulty}</span></span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>

@@ -310,17 +310,17 @@ class AIService {
 
       const concepts = result.outputs[0].data.concepts;
       console.log('🔍 Clarifai detected concepts:', concepts.slice(0, 10));
-      console.log('🍌 Looking for banana-related concepts:', concepts.filter(c => 
-        c.name.toLowerCase().includes('banana') || 
+      console.log('🍌 Looking for banana-related concepts:', concepts.filter((c: any) =>
+        c.name.toLowerCase().includes('banana') ||
         c.name.toLowerCase().includes('fruit') ||
         c.name.toLowerCase().includes('yellow')
       ));
 
       // Convert Clarifai concepts to our food recognition format
       const foodItems: FoodRecognitionResult[] = concepts
-        .filter(concept => concept.value > 0.5) // Lower threshold to catch more items
+        .filter((concept: any) => concept.value > 0.5) // Lower threshold to catch more items
         .slice(0, 5) // Limit to top 5 items
-        .map(concept => {
+        .map((concept: any) => {
           const foodName = concept.name;
           const confidence = concept.value;
           

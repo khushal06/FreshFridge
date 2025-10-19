@@ -186,6 +186,21 @@ class SupabaseService {
     }
   }
 
+  async deleteRecipe(id: string): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('recipes')
+        .delete()
+        .eq('id', id)
+
+      if (error) throw error
+      return true
+    } catch (error) {
+      console.error('Error deleting recipe:', error)
+      return false
+    }
+  }
+
   // Chat operations
   async addChatMessage(message: Omit<ChatMessage, 'id' | 'created_at'>): Promise<ChatMessage | null> {
     try {

@@ -33,6 +33,10 @@ class DataService {
     return await supabaseService.getAllRecipes()
   }
 
+  async deleteRecipe(id: string): Promise<boolean> {
+    return await supabaseService.deleteRecipe(id)
+  }
+
   async generateRecipeSuggestions(availableItems: FoodItem[]): Promise<Recipe[]> {
     try {
       // Only use AI on server side
@@ -76,26 +80,36 @@ class DataService {
         title: kronosRecipe.title,
         subtitle: kronosRecipe.subtitle,
         emoji: kronosRecipe.emoji,
-        cook_time: kronosRecipe.cookTime,
-        servings: kronosRecipe.servings,
-        ingredients: kronosRecipe.ingredients.join('\n'),
-        instructions: kronosRecipe.instructions.join('\n'),
+        cook_time: kronosRecipe.cookTime.toString(),
+        servings: kronosRecipe.servings.toString(),
+        ingredients: kronosRecipe.ingredients, // Keep as array
+        instructions: kronosRecipe.instructions, // Keep as array
         category: kronosRecipe.category,
-        difficulty: kronosRecipe.difficulty,
+        difficulty: kronosRecipe.difficulty as 'Easy' | 'Medium' | 'Hard',
         rating: kronosRecipe.rating,
-        review_count: kronosRecipe.reviewCount,
+        reviews: kronosRecipe.reviewCount, // Use 'reviews' not 'review_count'
         calories: kronosRecipe.calories,
-        description: kronosRecipe.description,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       }));
 
-      // Save recipes to database
+      // Check for existing recipes to avoid duplicates
+      const existingRecipes = await this.getRecipes()
+      const existingTitles = new Set(existingRecipes.map(r => r.title.toLowerCase()))
+      
+      // Save only new recipes to database
+      let newRecipeCount = 0
       for (const recipe of recipes) {
-        await supabaseService.addRecipe(recipe)
+        if (!existingTitles.has(recipe.title.toLowerCase())) {
+          await supabaseService.addRecipe(recipe)
+          newRecipeCount++
+          console.log(`✅ Saved new recipe: ${recipe.title}`)
+        } else {
+          console.log(`⚠️ Skipping duplicate recipe: ${recipe.title}`)
+        }
       }
       
-      console.log('✅ Generated and saved AI recipes:', recipes.length)
+      console.log(`✅ Generated ${recipes.length} recipes, saved ${newRecipeCount} new recipes`)
       return aiRecipes
     } catch (error) {
       console.error('Error generating AI recipes:', error)
@@ -162,13 +176,13 @@ class DataService {
         `${msg.is_user ? 'User' : 'Assistant'}: ${msg.message}`
       )
 
-      // Get AI response
-      const aiResponse = await aiService.chatWithAI(message, availableItems, recentMessages)
+      // Get AI response using KronosAI
+      const aiResponse = await kronosService.chatWithKitchenAssistant(message, availableItems)
       
       // Save AI response
       if (sessionId) {
         await supabaseService.addChatMessage({
-          message: aiResponse.message,
+          message: aiResponse,
           is_user: false,
           timestamp: new Date().toISOString(),
           session_id: sessionId,
@@ -176,7 +190,7 @@ class DataService {
       }
 
       return {
-        response: aiResponse,
+        response: { message: aiResponse },
         sessionId: sessionId || 'default',
       }
     } catch (error) {
