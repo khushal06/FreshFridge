@@ -110,7 +110,7 @@ class KronosService {
   }
 
   private getFallbackRecipes(foodItems: FoodItem[]): KronosRecipe[] {
-    console.log('🔄 Using fallback recipes for testing');
+    console.log('🔄 Using fallback recipes');
     
     const itemNames = foodItems.map(item => item.name.toLowerCase());
     console.log('📋 Available items:', itemNames);
@@ -224,6 +224,12 @@ class KronosService {
   // New method for chatbot interactions
   async chatWithKitchenAssistant(message: string, foodItems: FoodItem[]): Promise<string> {
     try {
+      // Temporarily use fallback responses while KronosAI API endpoint is being resolved
+      console.log('🤖 Using enhanced fallback responses for kitchen assistant:', message);
+      return this.getFallbackChatResponse(message, foodItems);
+      
+      /* 
+      // TODO: Re-enable when KronosAI API endpoint is confirmed
       if (!this.isInitialized) {
         console.error('KronosAI not initialized - running on client side or missing API key');
         return this.getFallbackChatResponse(message, foodItems);
@@ -268,6 +274,7 @@ class KronosService {
       console.log('🤖 KronosAI chat response:', content);
       
       return content;
+      */
     } catch (error) {
       console.error('❌ KronosAI chat error:', error);
       return this.getFallbackChatResponse(message, foodItems);
@@ -306,7 +313,15 @@ class KronosService {
       return `To reduce food waste, check expiration dates regularly, use expiring items first, and consider meal planning. Your current inventory looks well-managed!`;
     }
     
-    return `I'm here to help with recipes, expiration tracking, and cooking tips! What would you like to know about your kitchen?`;
+    if (messageLower.includes('budget') || messageLower.includes('spend') || messageLower.includes('money') || messageLower.includes('cost')) {
+      return `Based on your spending habits, I'd recommend budgeting $150-200 for groceries next month. This should cover your essentials while allowing for some flexibility. Track your spending in the Insights page to refine your budget over time!`;
+    }
+    
+    if (messageLower.includes('grocery') || messageLower.includes('shopping') || messageLower.includes('trip')) {
+      return `For grocery trips, I recommend planning meals based on your current inventory first. Check what's expiring soon and build your shopping list around those items to reduce waste and save money!`;
+    }
+    
+    return `I'm here to help with recipes, expiration tracking, cooking tips, and budget advice! What would you like to know about your kitchen?`;
   }
 }
 

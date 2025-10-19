@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { aiService } from '@/lib/ai-service';
+import { kronosService } from '@/lib/kronos-service';
 import { supabaseService } from '@/lib/supabase-service';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -31,19 +31,19 @@ export async function POST(request: NextRequest) {
       `${msg.is_user ? 'User' : 'Assistant'}: ${msg.message}`
     );
 
-    // Get AI response
-    const aiResponse = await aiService.chatWithAI(message, availableItems, recentMessages);
+    // Get AI response using KronosAI
+    const aiResponseText = await kronosService.chatWithKitchenAssistant(message, availableItems);
     
     // Save AI response
     await supabaseService.addChatMessage({
-      message: aiResponse.message,
+      message: aiResponseText,
       is_user: false,
       timestamp: new Date().toISOString(),
       session_id: currentSessionId,
     });
 
     return NextResponse.json({
-      response: aiResponse,
+      response: { message: aiResponseText },
       sessionId: currentSessionId,
     });
   } catch (error) {

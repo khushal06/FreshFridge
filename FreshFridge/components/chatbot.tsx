@@ -64,10 +64,23 @@ export default function Chatbot({ isOpen, onClose }: ChatbotProps) {
     setIsLoading(true)
 
     try {
-      // Import data service dynamically to avoid SSR issues
-      const { dataService } = await import('@/lib/data-service')
-      
-      const data = await dataService.sendChatMessage(inputMessage, sessionId || undefined)
+      // Call the chat API route
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: inputMessage,
+          sessionId: sessionId || undefined,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
       
       if (!data) {
         throw new Error('Failed to get response')
